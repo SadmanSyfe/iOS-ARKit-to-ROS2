@@ -11,7 +11,15 @@ import SwiftUI
 import CoreVideo
 
 
-private let client = ROSBridgeClient()
+let host: String = "XXX" //Host IP: ex. 192.XXX.XXX.XX, assumes port 9090
+let websocket: WebSockets = WebSockets(ip: host)
+
+
+private var activePayloads: [String : Payload] = [:]
+let depthTopic = ImagePayload(topicName: "depth_raw")
+
+
+
 // Make CustomARView conform to ARSessionDelegate
 class CustomARView: ARView, ARSessionDelegate {
     
@@ -19,24 +27,28 @@ class CustomARView: ARView, ARSessionDelegate {
         super.init(frame: frameRect)
         // Set the view's session delegate to itself
         session.delegate = self
+        
+        //TODO: ADD LOGIC TO CHECK WHAT TOPICS ARE ACTIVE OR NOT
+        activePayloads["depth_raw"] = depthTopic
+        
+        // 1. Set the onConnect closure to call advertise
+        websocket.onConnect = { [weak self] in
+            // Use a slight delay to ensure the WebSocket is fully ready
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                for payload in activePayloads{
+                    websocket.advertiseTopic(payload: payload.value)
+                }
+            }
+        }
     }
     
     dynamic required init?(coder decoder: NSCoder) {
         fatalError("init(coder:) has not been implmented")
     }
     
-    convenience init() {
-        self.init(frame: UIScreen.main.bounds)
-    }
-    
     private var lastPublishTime: TimeInterval = 0
     private let targetPublishInterval: TimeInterval = 1.0 / 10.0 // 10 FPS (0.1 seconds)
     
-    // This is the function you called in the container, now redundant for continuous updates
-    func updateFrameState() -> Double? {
-        let currentFrame = session.currentFrame
-        return currentFrame?.timestamp
-    }
 
     // MARK: - ARSessionDelegate
     
@@ -53,19 +65,19 @@ class CustomARView: ARView, ARSessionDelegate {
         
         guard let sceneDepth = frame.sceneDepth else { return }
         
-        let (rawDepthData, width, height) = extractRawDepthData(from: sceneDepth)
+        if activePayloads["depth_raw"] != nil { //check if depth_raw is an activeTopic
+            let (rawDepthData, width, height) = extractRawDepthData(from: sceneDepth)
+            depthTopic.updateData(data: rawDepthData, height: height, width: width)
+        }
         
-        print("Sending Raw Depth Data: Width \(width), Height \(height)")
-        
-        if let data = rawDepthData {
-            client.publishDepth(data: data, width: width, height: height)
-            
+        for payload in activePayloads{
+            websocket.sendJSONString(jsonString: payload.value.getPayload())
         }
     }
 
     
     /// Converts an ARDepthData CVPixelBuffer into a raw Swift Data object.
-    func extractRawDepthData(from depthData: ARDepthData) -> (data: Data?, width: Int, height: Int) {
+    func extractRawDepthData(from depthData: ARDepthData) -> (data: Data, width: Int, height: Int) {
         
         // Get the CVPixelBuffer (The raw data container)
         let depthPixelBuffer = depthData.depthMap
@@ -78,7 +90,7 @@ class CustomARView: ARView, ARSessionDelegate {
         // Get a pointer to the start of the data
         guard let baseAddress = CVPixelBufferGetBaseAddress(depthPixelBuffer) else {
             CVPixelBufferUnlockBaseAddress(depthPixelBuffer, .readOnly)
-            return (nil, width, height)
+            return (Data(), width, height)
         }
         
         // Calculate the total size of the data in bytes

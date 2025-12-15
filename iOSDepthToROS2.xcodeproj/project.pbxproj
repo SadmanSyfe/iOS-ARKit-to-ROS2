@@ -33,11 +33,6 @@
 			path = iOSDepthToROS2;
 			sourceTree = "<group>";
 		};
-		85EF68AB2EEAB94700F8E43D /* DataProcessing */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = DataProcessing;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,7 +50,6 @@
 		85EF68882EEAAE2A00F8E43D = {
 			isa = PBXGroup;
 			children = (
-				85EF68AB2EEAB94700F8E43D /* DataProcessing */,
 				85EF68932EEAAE2A00F8E43D /* iOSDepthToROS2 */,
 				85EF68922EEAAE2A00F8E43D /* Products */,
 			);
@@ -86,7 +80,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				85EF68932EEAAE2A00F8E43D /* iOSDepthToROS2 */,
-				85EF68AB2EEAB94700F8E43D /* DataProcessing */,
 			);
 			name = iOSDepthToROS2;
 			packageProductDependencies = (

@@ -82,5 +82,22 @@ final class WebSockets: WebSocketDelegate {
         }
     }
     
-    // You will need the convertTimestampToROS here or in an extension
+    func advertiseTopic(payload: Payload) {
+        print("Advertising: \(payload.topic)")
+        // Construct the advertise message for the depth image
+        let advertisment: [String: Any] = [
+            "op": "advertise",
+            "topic": payload.topic,
+            "type": payload.type
+        ]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: advertisment, options: [])
+            let jsonString = String(data: jsonData, encoding: .utf8)!
+            websocket.sendJSONString(jsonString: jsonString)
+            print("Successfully advertised: \(payload.topic)")
+        } catch {
+            print("Advertise JSON serialization error: \(error)")
+        }
+    }
 }
