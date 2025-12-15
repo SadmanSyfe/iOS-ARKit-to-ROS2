@@ -16,18 +16,8 @@ struct CustomARViewContainer: UIViewRepresentable {
         if ARWorldTrackingConfiguration.supportsFrameSemantics([.sceneDepth, .smoothedSceneDepth]) {
             configuration.frameSemantics = [.sceneDepth, .smoothedSceneDepth]
         }
-            
-            // Note: If you plan to use depth, you must enable it here:
-            // if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
-            //     config.frameSemantics = .sceneDepth
-            // }
 
             view.session.run(configuration)
-            
-            // The call to print the initial frame state is no longer needed
-            // print("Frame State!")
-            // print(view.updateFrameState())
-            
             return view
         }
     

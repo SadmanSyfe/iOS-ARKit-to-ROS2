@@ -17,6 +17,9 @@ let websocket: WebSockets = WebSockets(ip: host)
 
 private var activePayloads: [String : Payload] = [:]
 let depthTopic = ImagePayload(topicName: "depth_raw")
+let imageTopic = ImagePayload(topicName: "image_raw", encoding: "nv12") //Currently Not Using, Unstable and High Bandwith
+let confidenceTopic = ImagePayload(topicName: "depth_confidence", encoding: "mono8")
+let poseTfTopic = TransformStampedPayload(topicName: "pose_tf")
 
 
 
@@ -30,6 +33,10 @@ class CustomARView: ARView, ARSessionDelegate {
         
         //TODO: ADD LOGIC TO CHECK WHAT TOPICS ARE ACTIVE OR NOT
         activePayloads["depth_raw"] = depthTopic
+        //activePayloads["image_raw"] = imageTopic
+        activePayloads["depth_confidence"] = confidenceTopic
+        activePayloads["pose_tf"] = poseTfTopic
+
         
         // 1. Set the onConnect closure to call advertise
         websocket.onConnect = { [weak self] in
@@ -49,8 +56,6 @@ class CustomARView: ARView, ARSessionDelegate {
     private var lastPublishTime: TimeInterval = 0
     private let targetPublishInterval: TimeInterval = 1.0 / 10.0 // 10 FPS (0.1 seconds)
     
-
-    // MARK: - ARSessionDelegate
     
     // This delegate method is called automatically every time the session updates a frame
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
@@ -64,11 +69,29 @@ class CustomARView: ARView, ARSessionDelegate {
         lastPublishTime = currentTime
         
         guard let sceneDepth = frame.sceneDepth else { return }
-        
         if activePayloads["depth_raw"] != nil { //check if depth_raw is an activeTopic
-            let (rawDepthData, width, height) = extractRawDepthData(from: sceneDepth)
+            let (rawDepthData, width, height) = DataExtractor.extractRawDepthData(from: sceneDepth)
             depthTopic.updateData(data: rawDepthData, height: height, width: width)
         }
+        if activePayloads["depth_confidence"] != nil { //check if depth_confidence is an activeTopic
+            let (rawData, width, height) = DataExtractor.extractRawConfidenceData(from: sceneDepth)
+            confidenceTopic.updateData(data: rawData, height: height, width: width)
+        }
+        
+        let imagePixelBuffer = frame.capturedImage // CVPixelBuffer
+        if activePayloads["image_raw"] != nil { //check if image_raw is an activeTopic
+            imageTopic.stepMultiplier = 1
+            let (rawData, width, height) = DataExtractor.extractRawImageData(from: imagePixelBuffer)
+            //print("Height: \(height), Width: \(width)")
+            imageTopic.updateData(data: rawData, height: height, width: width)
+        }
+        
+        if activePayloads["pose_tf"] != nil { //check if pose_tf is an activeTopic
+            let newTf = DataExtractor.getPoseTransform(frame: frame)
+            poseTfTopic.updateTransform(newTransform: newTf)
+        }
+        
+        
         
         for payload in activePayloads{
             websocket.sendJSONString(jsonString: payload.value.getPayload())
@@ -76,37 +99,6 @@ class CustomARView: ARView, ARSessionDelegate {
     }
 
     
-    /// Converts an ARDepthData CVPixelBuffer into a raw Swift Data object.
-    func extractRawDepthData(from depthData: ARDepthData) -> (data: Data, width: Int, height: Int) {
-        
-        // Get the CVPixelBuffer (The raw data container)
-        let depthPixelBuffer = depthData.depthMap
-        let width = CVPixelBufferGetWidth(depthPixelBuffer)
-        let height = CVPixelBufferGetHeight(depthPixelBuffer)
-        
-        // 1. Lock the base address to access the raw memory
-        CVPixelBufferLockBaseAddress(depthPixelBuffer, .readOnly)
-        
-        // Get a pointer to the start of the data
-        guard let baseAddress = CVPixelBufferGetBaseAddress(depthPixelBuffer) else {
-            CVPixelBufferUnlockBaseAddress(depthPixelBuffer, .readOnly)
-            return (Data(), width, height)
-        }
-        
-        // Calculate the total size of the data in bytes
-        // For 32-bit float (4 bytes) and 1 channel:
-        // Total Size = Width * Height * 4 Bytes
-        let totalBytes = width * height * MemoryLayout<Float32>.size
-        
-        // 2. Create the Swift Data object by copying the bytes
-        // This is the core conversion step.
-        let data = Data(bytes: baseAddress, count: totalBytes)
-        
-        // 3. Unlock the base address to release the memory lock
-        CVPixelBufferUnlockBaseAddress(depthPixelBuffer, .readOnly)
     
-        
-        return (data, width, height)
-    }
     
 }

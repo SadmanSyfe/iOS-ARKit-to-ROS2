@@ -8,17 +8,24 @@
 import Foundation
 
 class ImagePayload: Payload{
-    let encoding: String = "32FC1"
     let isBigEndian: Int = 0
     let topicType: String = "Image/"
     let msgType: String = "Image"
     
+    var encoding: String = "32FC1"
     var height: Int = 0
     var width: Int = 0
+    var stepMultiplier = 4 // 4 bytes per Float32
     
     
     init(topicName: String){
         super.init(topicField: (self.topicType + topicName), msgType: self.msgType)
+        print("Created Image Topic Class: " + self.topic + " with Type: " + self.type)
+    }
+    
+    init(topicName: String, encoding: String){
+        super.init(topicField: (self.topicType + topicName), msgType: self.msgType)
+        self.encoding = encoding
         print("Created Image Topic Class: " + self.topic + " with Type: " + self.type)
     }
     
@@ -41,7 +48,7 @@ class ImagePayload: Payload{
                 "width": self.width,
                 "encoding": self.encoding,
                 "is_bigendian": self.isBigEndian,
-                "step": self.width * 4, // 4 bytes per Float32
+                "step": self.width * self.stepMultiplier,
                 "data": self.convertBase64() //Converts class Payload Data to Base 64
             ]
         ]

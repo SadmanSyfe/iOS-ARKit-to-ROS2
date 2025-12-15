@@ -30,9 +30,9 @@ class Payload{
     }
     func getPayload() -> String {
         self.constructPayload() //Update msg
-        print("CONSTRUCTED PAYLOAD")
+        //print("CONSTRUCTED PAYLOAD")
         let jsonString = self.serializeToJSON()
-        print("SERIALIZED PAYLOAD")
+        //print("SERIALIZED PAYLOAD")
         return jsonString
     }
     
