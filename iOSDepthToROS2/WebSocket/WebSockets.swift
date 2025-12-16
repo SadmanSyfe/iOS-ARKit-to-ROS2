@@ -94,7 +94,7 @@ final class WebSockets: WebSocketDelegate {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: advertisment, options: [])
             let jsonString = String(data: jsonData, encoding: .utf8)!
-            websocket.sendJSONString(jsonString: jsonString)
+            self.sendJSONString(jsonString: jsonString)
             print("Successfully advertised: \(payload.topic)")
         } catch {
             print("Advertise JSON serialization error: \(error)")

@@ -28,15 +28,15 @@ class Payload{
     func updateData(info: Data){
         self.data = info
     }
-    func getPayload() -> String {
-        self.constructPayload() //Update msg
+    func getPayload(frameTime: TimeInterval) -> String {
+        self.constructPayload(frameTime: frameTime) //Update msg
         //print("CONSTRUCTED PAYLOAD")
         let jsonString = self.serializeToJSON()
         //print("SERIALIZED PAYLOAD")
         return jsonString
     }
     
-    open func constructPayload() {
+    open func constructPayload(frameTime: TimeInterval) {
         print("UNIMPLEMENTED: contructPayload()")
     }
     
@@ -68,20 +68,21 @@ class Payload{
     }
     
     open func convertTimestampToROS(timestamp: TimeInterval) -> [String: Int] {
-            // Use the current time since UNIX epoch (1970-01-01 UTC)
-            let totalSeconds = Date().timeIntervalSince1970
-            // 1. Calculate the whole seconds component (int32 sec)
-            let sec = Int32(floor(totalSeconds))
-            // 2. Calculate the fractional nanoseconds component (uint32 nanosec)
-            // Fractional part = totalSeconds - whole seconds
-            let fractionalPart = totalSeconds - Double(sec)
-            // Nanoseconds = fractional part * 1,000,000,000
-            let nanosec = UInt32(fractionalPart * 1_000_000_000)
-            // ROS uses a JSON structure of {"sec": <int>, "nanosec": <uint>}
-            return [
-                "sec": Int(sec),
-                "nanosec": Int(nanosec) // JSON requires Int, but we pass the UInt32 value
-            ]
-        }
+        // Use the frame's timestamp since UNIX epoch (1970-01-01 UTC)
+        let totalSeconds = timestamp // Use the provided ARFrame time
+        
+        // 1. Calculate the whole seconds component (int32 sec)
+        let sec = Int32(floor(totalSeconds))
+        
+        // 2. Calculate the fractional nanoseconds component (uint32 nanosec)
+        let fractionalPart = totalSeconds - Double(sec)
+        let nanosec = UInt32(fractionalPart * 1_000_000_000)
+        
+        // ROS uses a JSON structure of {"sec": <int>, "nanosec": <uint>}
+        return [
+            "sec": Int(sec),
+            "nanosec": Int(nanosec)
+        ]
+    }
     
 }

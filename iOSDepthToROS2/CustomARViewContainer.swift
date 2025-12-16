@@ -13,8 +13,8 @@ struct CustomARViewContainer: UIViewRepresentable {
             print("Container Init and AR Session Starting...")
             let view = CustomARView(frame: .zero)
         let configuration = ARWorldTrackingConfiguration()
-        if ARWorldTrackingConfiguration.supportsFrameSemantics([.sceneDepth, .smoothedSceneDepth]) {
-            configuration.frameSemantics = [.sceneDepth, .smoothedSceneDepth]
+        if ARWorldTrackingConfiguration.supportsFrameSemantics([.sceneDepth]) {
+            configuration.frameSemantics = [.sceneDepth]
         }
 
             view.session.run(configuration)

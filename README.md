@@ -7,3 +7,13 @@ Developed and Tested on:
 * MacOS 26 
 * ROS2 Humble
 * Ubuntu 22.04
+
+ROS2 Launch and publisher topic Files:
+To start receiving and convert topic and depthMap data:
+
+Only need to run once: 
+Set the python script to an executable
+'''chmod +x tf_broadcaster.py'''
+
+Launch ROSbridge and all other nodes:
+'''ros2 launch arkitAdapter.launch.py'''

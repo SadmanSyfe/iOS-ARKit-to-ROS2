@@ -46,14 +46,14 @@ class IMUPayload: Payload{
             var linear_acceleration_z = Double(newAcc.z)
     }
     
-    override func constructPayload(){
-        let timestampROS = self.getCurrentTimestamp()
+    override func constructPayload(frameTime: TimeInterval){
+        let rosTime = self.convertTimestampToROS(timestamp: frameTime)
         let payload: [String: Any] = [
             "op": self.op,
             "topic": self.topic,
             "type": self.topicType,
             "msg": [
-                "header": ["stamp": timestampROS, "frame_id": "camera_imu_frame"],
+                "header": ["stamp": rosTime, "frame_id": "camera_imu_frame"],
                 // Orientation (Quaternion) - Leaving as identity for simplicity,
                 // as orientation is often sourced from the TF tree (base_link)
                 "orientation": [

@@ -17,7 +17,7 @@ class TFPublisher(Node):
         # 2. Subscribe to the iPhone's pose topic
         self.subscription = self.create_subscription(
             TransformStamped,
-            '/arkit/pose_tf', # The topic you publish from the iPhone
+            '/arkit/Pose/pose_tf', # The topic you publish from the iPhone
             self.transform_callback,
             10 # QoS setting
         )

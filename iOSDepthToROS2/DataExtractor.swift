@@ -139,6 +139,28 @@ struct DataExtractor {
         return arTransform
     }
     
+    static func getCameraInfo(frame: ARFrame) -> (Int, Int, [Double]){
+        let camera = frame.camera
+        let resolution = camera.imageResolution
+        let intrinsics = camera.intrinsics // This is a simd_float3x3 matrix
+        
+        // 1. Flatten the intrinsics matrix (focal length fx, fy, principal point cx, cy)
+        // ROS K matrix is a 3x3 row-major array.
+        // [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+        
+        let K: [Double] = [
+            // Row 0: fx, 0, cx
+            Double(intrinsics[0][0]), Double(intrinsics[0][1]), Double(intrinsics[0][2]),
+            // Row 1: 0, fy, cy
+            Double(intrinsics[1][0]), Double(intrinsics[1][1]), Double(intrinsics[1][2]),
+            // Row 2: 0, 0, 1
+            Double(intrinsics[2][0]), Double(intrinsics[2][1]), Double(intrinsics[2][2])
+        ]
+        
+        return (Int(resolution.width), Int(resolution.height), K)
+    }
+    
+    
 //Tried Implementing IMU, but i think its only for visionOS, not completely necessary so will skip for now
 //    static func getIMUData(frame: ARFrame) -> (acc: simd_double3, rot: simd_double3) {
 //        guard let motion = frame.camera.image. else { return (simd_double3(), simd_double3())}
