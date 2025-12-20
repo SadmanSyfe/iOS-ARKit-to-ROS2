@@ -12,15 +12,18 @@ import CoreVideo
 
 
 let depthTopic = ImagePayload(topicName: "depth_raw")
-let imageTopic = ImagePayload(topicName: "image_raw", encoding: "nv12") //Currently Not Using, Unstable and High Bandwith
+let imageTopic = ImagePayload(topicName: "image_raw", encoding: "rgb8")
 let confidenceTopic = ImagePayload(topicName: "depth_confidence", encoding: "mono8")
 let poseTfTopic = TransformStampedPayload(topicName: "pose_tf")
+let odomTopic = OdometryPayload(topicName: "camera_odom")
 let cameraInfoTopic = CameraInfoPayload(topicName: "camera_info")
 
 
 
 // Make CustomARView conform to ARSessionDelegate
 class CustomARView: ARView, ARSessionDelegate {
+	
+	
     
     private var activePayloads: [String : Payload] = [:]
     private var websocket: WebSockets! // Will be initialized in init
@@ -38,7 +41,7 @@ class CustomARView: ARView, ARSessionDelegate {
         self.websocket = WebSockets(ip: rosHost)
         
         // 2. --- TOPIC ACTIVATION ---
-        
+	    
         // Load flags (Default values are defined in SettingsView, but defaults.bool(forKey:) returns false if key doesn't exist)
         let isDepthActive = defaults.bool(forKey: "topic_depth")
         let isPoseActive = defaults.bool(forKey: "topic_pose")
@@ -46,11 +49,13 @@ class CustomARView: ARView, ARSessionDelegate {
         
         if isDepthActive {
             activePayloads["depth_raw"] = depthTopic
-            activePayloads["depth_confidence"] = confidenceTopic
+            //activePayloads["depth_confidence"] = confidenceTopic
             activePayloads["camera_info"] = cameraInfoTopic
+		activePayloads["image_raw"] = imageTopic
         }
         if isPoseActive {
             activePayloads["pose_tf"] = poseTfTopic
+		   activePayloads["camera_odom"] = odomTopic
         }
         
         // 3. --- FPS SETUP ---
@@ -67,6 +72,9 @@ class CustomARView: ARView, ARSessionDelegate {
                 }
             }
         }
+	    
+	    // Other Data Extraction Stuff
+	    DataExtractor.startMotionUpdates()
     }
     
     dynamic required init?(coder decoder: NSCoder) {
@@ -97,8 +105,10 @@ class CustomARView: ARView, ARSessionDelegate {
         
         guard let sceneDepth = frame.sceneDepth else { return }
         if activePayloads["depth_raw"] != nil { //check if depth_raw is an activeTopic
-            let (rawDepthData, width, height) = DataExtractor.extractRawDepthData(from: sceneDepth)
+            let (rawDepthData, width, height) = DataExtractor.extractDownscaledDepthData(from: sceneDepth)
             depthTopic.updateData(data: rawDepthData, height: height, width: width)
+		   print("h", height)
+		   print("w", width)
         }
         if activePayloads["depth_confidence"] != nil { //check if depth_confidence is an activeTopic
             let (rawData, width, height) = DataExtractor.extractRawConfidenceData(from: sceneDepth)
@@ -107,8 +117,8 @@ class CustomARView: ARView, ARSessionDelegate {
         
         let imagePixelBuffer = frame.capturedImage // CVPixelBuffer
         if activePayloads["image_raw"] != nil { //check if image_raw is an activeTopic
-            imageTopic.stepMultiplier = 1
-            let (rawData, width, height) = DataExtractor.extractRawImageData(from: imagePixelBuffer)
+            imageTopic.stepMultiplier = 3
+            let (rawData, width, height) = DataExtractor.extractDownsampledRGB8Data(from: imagePixelBuffer)
             //print("Height: \(height), Width: \(width)")
             imageTopic.updateData(data: rawData, height: height, width: width)
         }
@@ -117,15 +127,31 @@ class CustomARView: ARView, ARSessionDelegate {
             let newTf = DataExtractor.getPoseTransform(frame: frame)
             poseTfTopic.updateTransform(newTransform: newTf)
         }
+	    
+	    if activePayloads["camera_odom"] != nil { //check if camera_odom is an activeTopic
+		    let newodom = DataExtractor.getTwist(frame: frame)
+		    let newTf = DataExtractor.getPoseTransform(frame: frame)
+		    odomTopic.updateTransform(newTransform: newTf)
+		    odomTopic.updateTwist(linear: newodom.linear,angular: newodom.angular)
+	    }
         
         if activePayloads["camera_info"] != nil { //check if pose_tf is an activeTopic
-            let (width, height, K) = DataExtractor.getCameraInfo(frame: frame)
-            cameraInfoTopic.updateResolution(height: height, width: width)
-            cameraInfoTopic.updateK(newK: K)
+		   let scaleFactor: CGFloat = 0.1 // 1440 * 0.25 = 360
+		   let (imgData, scaledW, scaledH) = DataExtractor.extractDownsampledRGB8Data(from: imagePixelBuffer, scale: scaleFactor)
+
+		   // Update Camera Info with the SCALED values
+		   cameraInfoTopic.updateResolution(height: scaledH, width: scaledW)
+		   cameraInfoTopic.updateIntrinsics(matrix: frame.camera.intrinsics, scale: Double(scaleFactor))
         }
-        
+	    
         for payload in activePayloads{
-            websocket.sendJSONString(jsonString: payload.value.getPayload(frameTime: correctUnixEpochTime))
+		   if payload.value.type is ImagePayload{
+			   websocket.sendBSONString(bsonData: payload.value.getBSONPayload(frameTime: correctUnixEpochTime))
+			   
+		   }
+		   else{
+			   websocket.sendJSONString(jsonString: payload.value.getPayload(frameTime: correctUnixEpochTime))
+		   }
         }
         
         lastPublishTime = arFrameTime

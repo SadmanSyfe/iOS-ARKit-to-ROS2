@@ -71,7 +71,8 @@ class IMUPayload: Payload{
                     "y": linear_acceleration_y,
                     "z": linear_acceleration_z
                 ],
-                ]
+                ],
+		  "queue_length": 1
             ]
         self.msg = payload
     }

@@ -22,6 +22,9 @@ final class WebSockets: WebSocketDelegate {
         
         self.socket = WebSocket(request: request)
         self.socket.delegate = self
+	    
+	    let socketQueue = DispatchQueue(label: "com.ros.socket", qos: .userInteractive)
+	    self.socket.callbackQueue = socketQueue
         
         self.openConnection() // Connect immediately in the initializer
     }
@@ -72,6 +75,15 @@ final class WebSockets: WebSocketDelegate {
             print("Cannot send data: Socket Not Connected!")
         }
     }
+	
+	func sendBSONString(bsonData: Data) {
+	    if isConnected {
+		   // Starscream has a dedicated write(string:) method for text data
+		   socket.write(data: bsonData)
+	    } else {
+		   print("Cannot send data: Socket Not Connected!")
+	    }
+	}
     
     func disconnect(){
         if isConnected {

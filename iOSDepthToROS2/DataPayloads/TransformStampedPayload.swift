@@ -108,7 +108,8 @@ class TransformStampedPayload: Payload{
                             "w": Double(self.quaternion.vector.w)
                         ]
                     ]
-                ]
+			 ],
+			 "queue_length": 1
             ]
         self.msg = payload
     }

@@ -45,6 +45,8 @@ class Payload{
         let rosTime = self.convertTimestampToROS(timestamp: currentTimestamp)
         return rosTime
     }
+	
+	func getBSONPayload(frameTime: TimeInterval) -> Data{return Data()}
     
     
 
