@@ -13,15 +13,33 @@ import CoreVideo
 //AR View handles topic creation, data getting/updating, and uploading
 //Basically the main controller of everything this app does!
 
-// Create a Payload Object for every topic we want to upload
+// -- PARAMS --
+
+//Enable/Disable Topics Manually
+let enableDepthRaw = true // /arkit/Image/depth_raw
+let enableImageRaw = true // /arkit/Image/image_raw
+let enableConfidence = true// /arkit/Image/depth_confidence
+let enablePoseTf = true // /arkit/Pose/pose_tf
+let enableOdom = true // /arkit/Odometry/camera_odom
+let enableCamInfo = true // /arkit/depth/camera_info
+
+
+//Make sure this matches the scaling in the Image/Depth Downscaled Functions in DataExtractor.swift
+let scaleFactor: CGFloat = 0.1 // 1440 * 0.25 = 360 - for the camera_info topic
+
+let enableBSON = false //Currently have this as false, as rosbridge has BSON Serialization errors
+
+// --------------
+
+
+
+// Create a Payload Object for each topic
 let depthTopic = ImagePayload(topicName: "depth_raw")
 let imageTopic = ImagePayload(topicName: "image_raw", encoding: "rgb8")
 let confidenceTopic = ImagePayload(topicName: "depth_confidence", encoding: "mono8")
 let poseTfTopic = TransformStampedPayload(topicName: "pose_tf")
 let odomTopic = OdometryPayload(topicName: "camera_odom")
 let cameraInfoTopic = CameraInfoPayload(topicName: "camera_info")
-
-
 
 // Make CustomARView conform to ARSessionDelegate
 class CustomARView: ARView, ARSessionDelegate {
@@ -61,14 +79,14 @@ class CustomARView: ARView, ARSessionDelegate {
 		//What Topics to activate for updating and uploading
 		//Active Payload keys correspond to topic names
         if isDepthActive {
-            activePayloads["depth_raw"] = depthTopic
-            activePayloads["camera_info"] = cameraInfoTopic
-			activePayloads["image_raw"] = imageTopic
-			activePayloads["depth_confidence"] = confidenceTopic
+			if enableDepthRaw {activePayloads["depth_raw"] = depthTopic}
+			if enableCamInfo {activePayloads["camera_info"] = cameraInfoTopic}
+			if enableImageRaw {activePayloads["image_raw"] = imageTopic}
+			if enableConfidence {activePayloads["depth_confidence"] = confidenceTopic}
         }
         if isPoseActive {
-            activePayloads["pose_tf"] = poseTfTopic
-		   	activePayloads["camera_odom"] = odomTopic
+			if enablePoseTf {activePayloads["pose_tf"] = poseTfTopic}
+			if enableOdom {activePayloads["camera_odom"] = odomTopic}
         }
         
         //--- FPS SETUP ---
@@ -151,7 +169,6 @@ class CustomARView: ARView, ARSessionDelegate {
 	    }
         
         if activePayloads["camera_info"] != nil { //check if pose_tf is an activeTopic
-		   let scaleFactor: CGFloat = 0.1 // 1440 * 0.25 = 360
 		   let (_, scaledW, scaledH) = DataExtractor.extractDownsampledRGB8Data(from: imagePixelBuffer, scale: scaleFactor)
 		   // Update Camera Info with the SCALED values
 		   cameraInfoTopic.updateResolution(height: scaledH, width: scaledW)
@@ -161,9 +178,9 @@ class CustomARView: ARView, ARSessionDelegate {
 		
 	    // Iterate through our active payloads and upload them to ros_bridge
 		// We use JSON for smaller Data Uploading Topics and BSON for more heavier uploads like images becuase we can use Binary and smaller footprint
-		//NOTE AYAN FIX THIS  - upload BSON is broken rn so we are temp using JSON for everyhting
+		//NOTE - upload BSON is broken rn so we are temp using JSON for everyhting
         for payload in activePayloads{
-			if 1 == 0 { //Always false so BSON isn't run - Should be "payload.value is ImagePayload{"
+			if enableBSON && payload.value is ImagePayload {
 				//BSON is currently quite unreliable on rosbridge's side so will keep this functionality for images here for the future
 			   websocket.sendBSONString(bsonData: payload.value.getBSONPayload(frameTime: correctUnixEpochTime))
 			}

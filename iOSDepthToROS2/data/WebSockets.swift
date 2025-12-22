@@ -11,6 +11,10 @@ import CoreVideo
 //Uses StarScream Websockets to connect and send data to ros_bridge
 //This class focuses on the websocket, networking, and data upload logic
 
+// Change Port number here - default is 9090
+let PORT = "9090"
+
+
 final class WebSockets: WebSocketDelegate {
     
     var socket: WebSocket
@@ -21,7 +25,7 @@ final class WebSockets: WebSocketDelegate {
     
     init(ip: String) {
         // Correct the host string to use the WebSocket protocol
-        let urlString = "ws://\(ip):9090" // Assuming port 9090 for rosbridge
+        let urlString = "ws://\(ip):\(PORT)" // Assuming port 9090 for rosbridge
         guard let url = URL(string: urlString) else {
             fatalError("Invalid URL: \(urlString)")
         }
