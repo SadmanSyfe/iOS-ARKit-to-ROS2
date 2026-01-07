@@ -1,0 +1,26 @@
+name: Build iOS App
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: macos-14 # Uses Apple Silicon M2 runners
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Xcode Version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app
+
+      - name: Build for Simulator
+        run: |
+          xcodebuild build \
+            -scheme "iOS-ARKit-to-ROS2" \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath Build/
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-build
+          path: Build/Build/Products/Debug-iphonesimulator/
